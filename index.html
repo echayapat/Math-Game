@@ -1,121 +1,152 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Math Quiz Game</title>
+    <title>Grade 7 Math Challenge</title>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
-        }
-
-        #game-container {
-            text-align: center;
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 80%;
-            max-width: 500px;
-        }
-
-        h1 { color: #333; }
-        #question { font-size: 24px; margin-bottom: 20px; font-weight: bold; }
-        #score { font-size: 18px; color: #666; margin-bottom: 10px; }
-        #feedback { font-size: 20px; height: 30px; margin-top: 15px; font-weight: bold; }
-
-        .btn-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .answer-btn {
-            padding: 20px;
-            font-size: 20px;
-            cursor: pointer;
-            border: none;
-            border-radius: 12px;
-            background-color: #007bff;
-            color: white;
-            transition: transform 0.1s, background-color 0.2s;
-        }
-
-        .answer-btn:hover { background-color: #0056b3; transform: scale(1.02); }
-        .answer-btn:active { transform: scale(0.95); }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #2c3e50; margin: 0; color: white; }
+        #game-container { text-align: center; background: #34495e; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: 90%; max-width: 600px; }
+        .stats { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 1.2rem; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px; }
+        #question { font-size: 28px; margin: 30px 0; min-height: 80px; }
+        .btn-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .answer-btn { padding: 20px; font-size: 22px; cursor: pointer; border: none; border-radius: 15px; background-color: #3498db; color: white; transition: 0.2s; font-weight: bold; }
+        .answer-btn:hover { background-color: #2980b9; transform: translateY(-3px); }
+        .answer-btn:disabled { background-color: #7f8c8d; cursor: not-allowed; }
+        #feedback { font-size: 22px; margin-top: 20px; height: 30px; font-weight: bold; }
+        #timer { color: #e74c3c; font-weight: bold; }
+        .hidden { display: none; }
+        #restart-btn { padding: 15px 30px; font-size: 20px; background: #27ae60; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div id="game-container">
-        <div id="score">Score: 0</div>
-        <div id="question">Loading question...</div>
-        
-        <div class="btn-container">
-            <button class="answer-btn" onclick="checkAnswer(0)"></button>
-            <button class="answer-btn" onclick="checkAnswer(1)"></button>
-            <button class="answer-btn" onclick="checkAnswer(2)"></button>
-            <button class="answer-btn" onclick="checkAnswer(3)"></button>
+        <div id="game-ui">
+            <div class="stats">
+                <div>Score: <span id="score">0</span></div>
+                <div>Question: <span id="q-count">1</span>/20</div>
+                <div id="timer">Time: 15</div>
+            </div>
+            <div id="question">Loading...</div>
+            <div class="btn-container">
+                <button class="answer-btn" onclick="checkAnswer(0)"></button>
+                <button class="answer-btn" onclick="checkAnswer(1)"></button>
+                <button class="answer-btn" onclick="checkAnswer(2)"></button>
+                <button class="answer-btn" onclick="checkAnswer(3)"></button>
+            </div>
+            <div id="feedback"></div>
         </div>
 
-        <div id="feedback"></div>
+        <div id="end-screen" class="hidden">
+            <h1>Game Over!</h1>
+            <p style="font-size: 24px;">Your Final Score: <span id="final-score">0</span> / 20</p>
+            <button id="restart-btn" onclick="resetGame()">Play Again</button>
+        </div>
     </div>
 
     <script>
         let score = 0;
+        let qIndex = 0;
+        let timeLeft = 15;
+        let timerInterval;
         let currentQuestion = {};
-        
-        // 7th Grade Math Questions
+
         const questions = [
-            { q: "What is -5 + 8?", a: ["3", "-3", "13", "-13"], correct: 0 },
-            { q: "Solve: 2x = 10", a: ["2", "5", "8", "20"], correct: 1 },
-            { q: "Which is a prime number?", a: ["4", "9", "11", "15"], correct: 2 },
-            { q: "What is 10% of 200?", a: ["10", "2", "20", "50"], correct: 2 },
-            { q: "What is the square root of 49?", a: ["6", "7", "8", "9"], correct: 1 },
-            { q: "What is |-15|?", a: ["-15", "0", "15", "1.5"], correct: 2 }
+            { q: "What is -12 + 7?", a: ["-5", "5", "-19", "19"], c: 0 },
+            { q: "Solve for x: x - 5 = 12", a: ["7", "17", "-7", "60"], c: 1 },
+            { q: "What is 25% of 80?", a: ["10", "15", "20", "25"], c: 2 },
+            { q: "Simplify: 3(x + 2)", a: ["3x+2", "3x+6", "x+6", "5x"], c: 1 },
+            { q: "What is the area of a square with side 6?", a: ["12", "24", "36", "48"], c: 2 },
+            { q: "What is 2/5 as a decimal?", a: ["0.2", "0.4", "0.5", "0.25"], c: 1 },
+            { q: "Find the mean: 2, 4, 6", a: ["3", "4", "5", "6"], c: 1 },
+            { q: "What is (-3) * (-4)?", a: ["-7", "7", "-12", "12"], c: 3 },
+            { q: "Solve: 10 / 0.5", a: ["5", "10.5", "15", "20"], c: 3 },
+            { q: "Radius is 5. What is the diameter?", a: ["2.5", "10", "15", "25"], c: 1 },
+            { q: "What is 3 squared plus 4 squared?", a: ["7", "14", "25", "49"], c: 2 },
+            { q: "Which is greater: -10 or -2?", a: ["-10", "-2", "They are equal", "Neither"], c: 1 },
+            { q: "Solve for y: 3y = 21", a: ["6", "7", "8", "9"], c: 1 },
+            { q: "What is 1/2 + 1/4?", a: ["1/6", "2/6", "3/4", "2/4"], c: 2 },
+            { q: "Angle of a straight line?", a: ["90°", "180°", "270°", "360°"], c: 1 },
+            { q: "What is 1000 x 0.01?", a: ["1", "10", "100", "0.1"], c: 1 },
+            { q: "Is 27 a prime number?", a: ["Yes", "No", "Maybe", "Only on Tuesdays"], c: 1 },
+            { q: "Solve: 5 + 2 * 3", a: ["21", "11", "10", "13"], c: 1 },
+            { q: "What is 15 - (-5)?", a: ["10", "20", "-10", "-20"], c: 1 },
+            { q: "Probability of flipping Heads?", a: ["0", "1", "0.5", "0.25"], c: 2 }
         ];
 
+        function startTimer() {
+            timeLeft = 15;
+            document.getElementById('timer').innerText = "Time: " + timeLeft;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').innerText = "Time: " + timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    checkAnswer(-1); // Automatically "wrong" if time runs out
+                }
+            }, 1000);
+        }
+
         function nextQuestion() {
+            if (qIndex >= 20) {
+                showEndScreen();
+                return;
+            }
+
             document.getElementById('feedback').innerText = "";
-            // Pick a random question
+            document.getElementById('q-count').innerText = qIndex + 1;
+            
+            // Randomly select question
             currentQuestion = questions[Math.floor(Math.random() * questions.length)];
-            
             document.getElementById('question').innerText = currentQuestion.q;
-            const buttons = document.querySelectorAll('.answer-btn');
             
-            // Set text for each button
-            buttons.forEach((btn, index) => {
-                btn.innerText = currentQuestion.a[index];
+            const buttons = document.querySelectorAll('.answer-btn');
+            buttons.forEach((btn, i) => {
+                btn.innerText = currentQuestion.a[i];
+                btn.disabled = false;
             });
+
+            startTimer();
         }
 
         function checkAnswer(index) {
+            clearInterval(timerInterval);
             const feedback = document.getElementById('feedback');
+            const buttons = document.querySelectorAll('.answer-btn');
             
-            if (index === currentQuestion.correct) {
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (index === currentQuestion.c) {
                 score++;
-                feedback.style.color = "green";
+                feedback.style.color = "#2ecc71";
                 feedback.innerText = "Correct! +1 Score";
             } else {
-                feedback.style.color = "red";
-                feedback.innerText = "You picked the wrong answer!";
+                feedback.style.color = "#e74c3c";
+                feedback.innerText = index === -1 ? "Time's Up!" : "Wrong answer!";
             }
 
-            document.getElementById('score').innerText = "Score: " + score;
-            
-            // Wait 1.5 seconds so user can read feedback, then move on
+            document.getElementById('score').innerText = score;
+            qIndex++;
+
             setTimeout(nextQuestion, 1500);
         }
 
-        // Start the game
+        function showEndScreen() {
+            document.getElementById('game-ui').classList.add('hidden');
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = score;
+        }
+
+        function resetGame() {
+            score = 0;
+            qIndex = 0;
+            document.getElementById('score').innerText = score;
+            document.getElementById('game-ui').classList.remove('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            nextQuestion();
+        }
+
         nextQuestion();
     </script>
-
 </body>
 </html>
